@@ -15,7 +15,7 @@ Statistics::MVA::Bartlett - Multivariate Test of Equality of Population Covarian
 
 =head1 VERSION
 
-This document describes Statistics::MVA::Bartlett version 0.0.2
+This document describes Statistics::MVA::Bartlett version 0.0.4
 
 =cut
 
@@ -73,7 +73,7 @@ http://www.itl.nist.gov/div898/handbook/eda/section3/eda357.htm.
 
 =cut
 
-use version; our $VERSION = qv('0.0.2');
+use version; our $VERSION = qv('0.0.4');
 
 sub bartlett_mva {
     my $self = shift;
