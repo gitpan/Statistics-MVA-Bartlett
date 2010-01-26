@@ -1,4 +1,4 @@
-Statistics-MVA-Bartlett version 0.0.1
+Statistics-MVA-Bartlett version 0.0.2
 
 Bartlett's test ( Snedecor and Cochran, 1983) is used to test if k samples have equal variances. This multivariate form
 tests for homogeneity of the variance-covariance matrices across samples. Some statistical tests assume such homogeneity

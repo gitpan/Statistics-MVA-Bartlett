@@ -1,6 +1,4 @@
 package Statistics::MVA::Bartlett;
-
-# use base must be first
 use base Statistics::MVA;
 
 use strict;
@@ -8,18 +6,19 @@ use warnings;
 use Carp;
 use Math::Cephes qw(:explog);
 use Statistics::Distributions qw( chisqrdistr chisqrprob );
-# Cephes::Math::Matrix has no determinant function and i can´t be bothered to implement one. As often MatrixReal is useful. Its used by MVA so auto-used here
 
 =head1 NAME
 
 Statistics::MVA::Bartlett - Multivariate Test of Equality of Population Covariance Matrices.
 
 =cut
+
 =head1 VERSION
 
-This document describes Statistics::MVA::Bartlett version 0.0.1
+This document describes Statistics::MVA::Bartlett version 0.0.2
 
 =cut
+
 =head1 SYNOPSIS
 
     # we have several groups of data each with 3 variables
@@ -55,8 +54,7 @@ This document describes Statistics::MVA::Bartlett version 0.0.1
     use Statistics::MVA::Bartlett;
  
     # Create a Statistics::MVA::Bartlett object and pass it the data as a series of Lists-of-Lists within an anonymous array. 
-    # Pass the option standardise => 0 - see L<Statistics::FactorAnalysis> for details of this option.
-    my $bart1 = Statistics::MVA::Bartlett->new([$data_X, $data_Y, $data_Z],{standardise => 0});
+    my $bart1 = Statistics::MVA::Bartlett->new([$data_X, $data_Y, $data_Z]);
 
     # Access the output using the bartlett_mva method. In void context it prints a report to STDOUT.
     $bart->bartlett_mva;
@@ -65,47 +63,29 @@ This document describes Statistics::MVA::Bartlett version 0.0.1
     my ($chi, $df, $p) = $bart->bartlett_mva;
 
 =cut
+
 =head1 DESCRIPTION
 
-Bartlett's test ( Snedecor and Cochran, 1983) is used to test if k samples have equal variances. This multivariate form
+Bartlett's test is used to test if k samples have equal variances. This multivariate form
 tests for homogeneity of the variance-covariance matrices across samples. Some statistical tests assume such homogeneity
 across groups or samples. This test allows you to check that assumption. See
 http://www.itl.nist.gov/div898/handbook/eda/section3/eda357.htm.
 
 =cut
 
-use version; our $VERSION = qv('0.0.3');
-
-# $mva->[0] - covariate matrix, ->[1] - var number, ->[2] - observations
-
-=head1
-
-Bartlett's Test finds a significant difference between the variance-covariance matrices 
-
-Equality (homogeneity) of variance
-
-Multivariate - Test of Equality of Population Covariance Matrices
-
-=cut
+use version; our $VERSION = qv('0.0.2');
 
 sub bartlett_mva {
-
     my $self = shift;
-
     my $context = wantarray;
-
     my $s_ref = $self->[0];
     my $k = $self->[1];
     my $p = $self->[2];
     
     my $c_ref = &_Cs($s_ref, $k, $p);
-
     my $d_ref = &_dets($c_ref, $k);
-
     my $chi = &_final($d_ref, $k, $p);
-
     my $df = $p*($p+1)*($k-1)/2; 
-
     my $chisprob = &chisqrprob($df,$chi);
 
     if ( !$context ) { print qq{\nChi = $chi, df = $df and p = $chisprob}; return; }
@@ -113,56 +93,35 @@ sub bartlett_mva {
 }
 
 sub _dets {
-
     my ($c_ref, $k) = @_;
-
     # d<-det(c) # d_a<-det(c_a) # d_b<-det(c_b)
     my $det_ref = [];
-
     for my $i (0..$k) {
         my $determinant = $c_ref->[$i][0]->det;
         $det_ref->[$i] = [$determinant, $c_ref->[$i][1]];
     }
-
     return $det_ref;
 }
 
 sub _final {
-
     my ($d_ref, $k, $p) = @_;
-
-    # ((n-k)*log(d))    
     my $d = ( ( $d_ref->[$k][1] - $k ) * ( log ( $d_ref->[$k][0] ) ) );
-    
-    # sum ( (n_i-1) * log ( d_i   ) )
     my $d_sum = 0;
     for my $i (0..$k-1) { $d_sum += ( ( $d_ref->[$i][1] - 1 ) * ( log ( $d_ref->[$i][0] ) ) ); }
-
-    # m = ( ( (n_total-k) *    log ( d     )) - sum ( (n_i-1) * log ( d_i   ) ) ) 
     my $m = $d - $d_sum;
-
-    # sum ( 1 / (n_i-1) )
     my $n_sum = 0;
     for my $i (0..$k-1) { $n_sum += 1 / ( $d_ref->[$i][1] - 1 ); } # print 1/($d_ref->[$i][1]-1) }
-
-    #/ in c/perl operator precedence is not same as scientific computing systems * ( $n_sum - ... needs that extra (...
-    # ( 1 - (( 2 * p * p+3 *p-1 ) / (6*(p+1)*(k-1)) * (   sum ( 1 / (n_i-1) ) -   1 / (n_total-k) ) ) ) 
     my $h = 1 - ( ( 2 * $p* $p+3 * $p-1 ) / (6 * ($p+1) * ($k-1) ) * ( $n_sum - (1/($d_ref->[$k][1]-$k))) );
-
     my $chi = $m * $h;
-
     return $chi;
 }
 
 sub _Cs {
-
     my ( $s_ref, $k, $p ) = @_;
-    
     my $c_ref = [];
     #/ matrices are initialised as zero! so we can just use addition... and not shadow or initialise a p*p structure of 0s
     my $c_total = Math::MatrixReal->new($p, $p);
     # $new_matrix = $some_matrix->shadow();
-
     my $n_total = 0;
     for my $i (0..$k-1) {
         my $c_mat = Math::MatrixReal->new($p, $p);
@@ -172,20 +131,16 @@ sub _Cs {
         $n_total += $s_ref->[$i][1];
         $c_ref->[$i] = [$c_mat, $s_ref->[$i][1]];
     }
-
     my $factor = (1/($n_total-$k));
     $c_total->multiply_scalar($c_total,$factor);
     $c_ref->[$k] = [$c_total,$n_total];
-
     return $c_ref;
 }
 
 sub _cv_matrices {
-    
     my ( $groups, $k ) = @_;
     my @p;
     my $a_ref = [];
-
     #for my $i (0..$self->[1]-1) {
     for my $i (0..$k-1) {
         #my $mva = Statistics::MVA->new($groups->[$i],{standardise => 0, divisor => 1});
@@ -194,24 +149,20 @@ sub _cv_matrices {
         push @p, $mva->[1];
         $a_ref->[$i] = [ $mva_matrix, $mva->[2] ]; 
     }
-
     #/ should make sure than p for all entries is the same!!!
     my $p_check = shift @p;
     croak qq{\nAll groups must have the same variable number} if &_p_notall($p_check, \@p);
     #croak qq{\nAll groups must have the same variable number} if &_p_notall(@p);
-
     return ($a_ref, $p_check);
 }
 
 sub _p_notall {
     my ($p_check, $p_ref) = @_;
-
     #for (@p) {
     for (@{$p_ref}) {
         # return 0 if $_ != $p_check;
         return 1 if $_ != $p_check;
     } 
-    #y this is only reached if one of them wasn´t equal to p
     return 0;
 }
 
@@ -227,16 +178,19 @@ __END__
 'Statistics::Distributions' => '1.02',
 
 =cut
+
 =head1 BUGS AND LIMITATIONS
 
 Let me know.
 
 =cut
+
 =head1 AUTHOR
 
 Daniel S. T. Hughes  C<< <dsth@cantab.net> >>
 
 =cut
+
 =head1 LICENCE AND COPYRIGHT
 
 Copyright (c) 2010, Daniel S. T. Hughes C<< <dsth@cantab.net> >>. All rights reserved.
@@ -245,6 +199,7 @@ This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.
 
 =cut
+
 =head1 DISCLAIMER OF WARRANTY
 
 Because this software is licensed free of charge, there is no warranty
@@ -268,3 +223,4 @@ failure of the software to operate with any other software), even if
 such holder or other party has been advised of the possibility of
 such damages.
 =cut
+
